@@ -1,7 +1,0 @@
-routes:
-  - path: /
-    index: index.html
-  - path: /oauth/callback
-    index: index.html
-  - path: /*
-    index: index.html

@@ -12,11 +12,20 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    middlewareMode: false,
     proxy: {
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:3001',
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    port: 3000,
+    host: true,
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
   },
 });
