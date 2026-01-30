@@ -18,12 +18,13 @@ interface EnvConfig {
 function validateEnv(): EnvConfig {
   const requiredEnvVars = [
     'DATABASE_URL',
-    'REDIS_URL',
     'JWT_SECRET',
     'GMAIL_CLIENT_ID',
     'GMAIL_CLIENT_SECRET',
     'GMAIL_REDIRECT_URI',
   ];
+
+  // REDIS_URL is optional - we have mock queues for when Redis isn't available
 
   const missing: string[] = [];
   const warnings: string[] = [];
