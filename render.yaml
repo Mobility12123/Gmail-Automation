@@ -1,0 +1,46 @@
+# Render Blueprint - Auto-deploy both frontend and backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API Service
+  - type: web
+    name: gmail-automation-api
+    runtime: node
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3002
+      - key: DATABASE_URL
+        sync: false # You'll set this manually
+      - key: JWT_SECRET
+        sync: false
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_REDIRECT_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+    healthCheckPath: /api/health
+
+  # Frontend Static Site
+  - type: web
+    name: gmail-automation-frontend
+    runtime: static
+    region: oregon
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false # You'll set this to your backend URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: email-automation-db
+    environment:
+      POSTGRES_DB: email_automation
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres123}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: email-automation-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: email-automation-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres123}@postgres:5432/email_automation
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+      GMAIL_REDIRECT_URI: ${GMAIL_REDIRECT_URI:-http://localhost:3001/api/auth/gmail/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: email-automation-frontend
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: email-automation-worker
+    command: npm run worker
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres123}@postgres:5432/email_automation
+      REDIS_URL: redis://redis:6379
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:

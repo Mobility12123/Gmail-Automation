@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  emailAccounts EmailAccount[]
+  rules         Rule[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model EmailAccount {
+  id            String   @id @default(uuid())
+  userId        String
+  email         String
+  provider      String   @default("gmail")
+  accessToken   String   @db.Text
+  refreshToken  String?  @db.Text
+  tokenExpiry   DateTime?
+  isActive      Boolean  @default(true)
+  lastChecked   DateTime?
+  watchExpiry   DateTime?
+  historyId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rules         Rule[]
+  processedEmails ProcessedEmail[]
+  activityLogs  ActivityLog[]
+
+  @@unique([userId, email])
+  @@index([userId])
+  @@map("email_accounts")
+}
+
+enum RuleOperator {
+  EQUALS
+  CONTAINS
+  STARTS_WITH
+  ENDS_WITH
+  REGEX
+  NOT_EQUALS
+  NOT_CONTAINS
+}
+
+enum RuleLogic {
+  AND
+  OR
+}
+
+model Rule {
+  id              String   @id @default(uuid())
+  userId          String
+  emailAccountId  String
+  name            String
+  description     String?
+  isActive        Boolean  @default(true)
+  priority        Int      @default(0)
+  
+  // Filter conditions (stored as JSON)
+  conditions      Json     // { matchSubject, matchFrom, matchBody }
+  action          String   @default("ACCEPT") // ACCEPT, REJECT, FORWARD, SEND_CONFIRMATION
+  
+  // For SEND_CONFIRMATION action
+  confirmationSubject String?
+  confirmationBody    String?  @db.Text
+  
+  // Statistics
+  matchCount      Int      @default(0)
+  successCount    Int      @default(0)
+  failureCount    Int      @default(0)
+  lastMatched     DateTime?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailAccount    EmailAccount  @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+  processedEmails ProcessedEmail[]
+
+  @@index([userId])
+  @@index([emailAccountId])
+  @@index([isActive])
+  @@map("rules")
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  ACCEPTED
+  FAILED
+  SKIPPED
+  DUPLICATE
+}
+
+model ProcessedEmail {
+  id              String   @id @default(uuid())
+  emailAccountId  String
+  ruleId          String?
+  
+  // Email details
+  messageId       String
+  threadId        String?
+  subject         String
+  from            String
+  to              String[]
+  receivedAt      DateTime
+  
+  // Content
+  bodyPreview     String?  @db.Text
+  acceptLink      String?
+  
+  // Processing
+  status          ProcessingStatus
+  processedAt     DateTime @default(now())
+  acceptedAt      DateTime?
+  error           String?  @db.Text
+  retryCount      Int      @default(0)
+  
+  // Metadata
+  metadata        Json?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  emailAccount    EmailAccount @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+  rule            Rule?        @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  activityLogs    ActivityLog[]
+
+  @@unique([emailAccountId, messageId])
+  @@index([emailAccountId])
+  @@index([status])
+  @@index([receivedAt])
+  @@map("processed_emails")
+}
+
+enum ActivityType {
+  EMAIL_RECEIVED
+  EMAIL_PROCESSED
+  ORDER_ACCEPTED
+  ORDER_FAILED
+  RULE_MATCHED
+  RULE_SKIPPED
+  ACCOUNT_CONNECTED
+  ACCOUNT_DISCONNECTED
+  ERROR
+}
+
+model ActivityLog {
+  id              String       @id @default(uuid())
+  userId          String
+  emailAccountId  String?
+  processedEmailId String?
+  
+  type            ActivityType
+  title           String
+  description     String?      @db.Text
+  metadata        Json?
+  
+  createdAt       DateTime     @default(now())
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailAccount    EmailAccount? @relation(fields: [emailAccountId], references: [id], onDelete: Cascade)
+  processedEmail  ProcessedEmail? @relation(fields: [processedEmailId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([emailAccountId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("activity_logs")
+}
+
+model SystemStatus {
+  id              String   @id @default(uuid())
+  serviceName     String   @unique
+  isHealthy       Boolean  @default(true)
+  lastCheck       DateTime @default(now())
+  lastError       String?  @db.Text
+  metadata        Json?
+  
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_status")
+}

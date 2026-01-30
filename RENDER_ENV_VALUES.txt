@@ -1,0 +1,61 @@
+# ================================================
+# RENDER DEPLOYMENT - ENVIRONMENT VARIABLES
+# Copy-paste these values to Render Dashboard
+# ================================================
+
+# ======================
+# BACKEND ENVIRONMENT
+# ======================
+# Go to: Render Dashboard → gmail-automation-api → Environment
+
+NODE_ENV=production
+PORT=3002
+
+# Copy from your backend/.env file:
+DATABASE_URL=postgresql://neondb_owner:npg_Wah4LBCv5dJU@ep-curly-sound-ahiy1c2m-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+JWT_SECRET=change-this-to-a-secure-random-string-at-least-32-characters-long
+GMAIL_CLIENT_ID=22540028343-c5jde953nm6hupcc1kgrur1qhnpise54.apps.googleusercontent.com
+GMAIL_CLIENT_SECRET=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
+
+# ⚠️ UPDATE THESE AFTER DEPLOYMENT (use your actual Render URLs):
+GMAIL_REDIRECT_URI=https://YOUR-BACKEND-NAME.onrender.com/api/email-accounts/callback
+FRONTEND_URL=https://YOUR-FRONTEND-NAME.onrender.com
+
+
+# ======================
+# FRONTEND ENVIRONMENT
+# ======================
+# Go to: Render Dashboard → gmail-automation-frontend → Environment
+
+# ⚠️ UPDATE THIS (use your actual backend URL):
+VITE_API_URL=https://YOUR-BACKEND-NAME.onrender.com
+
+
+# ======================
+# GOOGLE CLOUD CONSOLE
+# ======================
+# Go to: console.cloud.google.com → APIs & Services → Credentials → Your OAuth Client
+
+# Add to "Authorized JavaScript origins":
+https://YOUR-FRONTEND-NAME.onrender.com
+
+# Add to "Authorized redirect URIs":
+https://YOUR-BACKEND-NAME.onrender.com/api/email-accounts/callback
+
+
+# ================================================
+# EXAMPLE (if your Render names are):
+#   Backend: gmail-automation-api
+#   Frontend: gmail-automation-frontend
+# ================================================
+
+# Backend:
+# GMAIL_REDIRECT_URI=https://gmail-automation-api.onrender.com/api/email-accounts/callback
+# FRONTEND_URL=https://gmail-automation-frontend.onrender.com
+
+# Frontend:
+# VITE_API_URL=https://gmail-automation-api.onrender.com
+
+# Google Cloud:
+# JavaScript Origins: https://gmail-automation-frontend.onrender.com
+# Redirect URI: https://gmail-automation-api.onrender.com/api/email-accounts/callback
