@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../index';
@@ -10,7 +10,7 @@ const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Register
-router.post('/register', async (req, res, next) => {
+router.post('/register', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, name } = req.body;
 
@@ -59,7 +59,7 @@ router.post('/register', async (req, res, next) => {
 });
 
 // Login
-router.post('/login', async (req, res, next) => {
+router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
@@ -102,13 +102,13 @@ router.post('/login', async (req, res, next) => {
 });
 
 // Get Gmail OAuth URL
-router.get('/gmail/url', (_req, res) => {
+router.get('/gmail/url', (_req: Request, res: Response) => {
   const authUrl = gmailService.getAuthUrl();
   res.json({ authUrl });
 });
 
 // Gmail OAuth callback
-router.get('/gmail/callback', async (req, res, next) => {
+router.get('/gmail/callback', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { code } = req.query;
 
@@ -152,7 +152,7 @@ router.get('/gmail/callback', async (req, res, next) => {
 });
 
 // Verify token
-router.get('/verify', async (req, res, next) => {
+router.get('/verify', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];

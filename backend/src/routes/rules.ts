@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { AuthRequest } from '../middleware/auth';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../middleware/errorHandler';
@@ -7,7 +7,7 @@ import { logger } from '../utils/logger';
 const router = Router();
 
 // Get all rules
-router.get('/', async (req: AuthRequest, res, next) => {
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { emailAccountId } = req.query;
 
@@ -38,7 +38,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 });
 
 // Get single rule
-router.get('/:id', async (req: AuthRequest, res, next) => {
+router.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const rule = await prisma.rule.findFirst({
       where: {
@@ -65,7 +65,7 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Create rule
-router.post('/', async (req: AuthRequest, res, next) => {
+router.post('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const {
       emailAccountId,
@@ -143,7 +143,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
 });
 
 // Update rule
-router.patch('/:id', async (req: AuthRequest, res, next) => {
+router.patch('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const {
       name,
@@ -178,10 +178,11 @@ router.patch('/:id', async (req: AuthRequest, res, next) => {
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (matchSubject !== undefined || matchFrom !== undefined || matchBody !== undefined) {
+      const existingConditions = existingRule.conditions as any || {};
       updateData.conditions = {
-        matchSubject: matchSubject !== undefined ? matchSubject : existingRule.conditions?.matchSubject,
-        matchFrom: matchFrom !== undefined ? matchFrom : existingRule.conditions?.matchFrom,
-        matchBody: matchBody !== undefined ? matchBody : existingRule.conditions?.matchBody,
+        matchSubject: matchSubject !== undefined ? matchSubject : existingConditions.matchSubject,
+        matchFrom: matchFrom !== undefined ? matchFrom : existingConditions.matchFrom,
+        matchBody: matchBody !== undefined ? matchBody : existingConditions.matchBody,
       };
     }
     if (action !== undefined) updateData.action = action;
@@ -211,7 +212,7 @@ router.patch('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Delete rule
-router.delete('/:id', async (req: AuthRequest, res, next) => {
+router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const rule = await prisma.rule.findFirst({
       where: {
@@ -237,7 +238,7 @@ router.delete('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Test rule against sample email
-router.post('/:id/test', async (req: AuthRequest, res, next) => {
+router.post('/:id/test', async (req: AuthRequest, res: any, next: any) => {
   try {
     const { sampleEmail } = req.body;
 
@@ -256,7 +257,19 @@ router.post('/:id/test', async (req: AuthRequest, res, next) => {
       throw new NotFoundError('Rule not found');
     }
 
-    const matches = ruleMatchingService.matchRule(sampleEmail, rule);
+    // Simple rule matching logic
+    const conditions = rule.conditions as any;
+    let matches = true;
+
+    if (conditions?.matchSubject && sampleEmail.subject) {
+      matches = matches && sampleEmail.subject.toLowerCase().includes(conditions.matchSubject.toLowerCase());
+    }
+    if (conditions?.matchFrom && sampleEmail.from) {
+      matches = matches && sampleEmail.from.toLowerCase().includes(conditions.matchFrom.toLowerCase());
+    }
+    if (conditions?.matchBody && sampleEmail.body) {
+      matches = matches && sampleEmail.body.toLowerCase().includes(conditions.matchBody.toLowerCase());
+    }
 
     res.json({
       matches,
@@ -264,7 +277,6 @@ router.post('/:id/test', async (req: AuthRequest, res, next) => {
         id: rule.id,
         name: rule.name,
         conditions: rule.conditions,
-        logic: rule.logic,
       },
     });
   } catch (error) {
@@ -273,7 +285,7 @@ router.post('/:id/test', async (req: AuthRequest, res, next) => {
 });
 
 // Get rule statistics
-router.get('/:id/stats', async (req: AuthRequest, res, next) => {
+router.get('/:id/stats', async (req: AuthRequest, res: any, next: any) => {
   try {
     const rule = await prisma.rule.findFirst({
       where: {

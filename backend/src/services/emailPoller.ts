@@ -124,8 +124,10 @@ export class EmailPoller {
 
   /**
    * Parse Gmail message into EmailData format
+   * @deprecated Use inline parsing instead - kept for reference
    */
-  private parseEmailData(fullMessage: any, emailAccountId: string) {
+  // @ts-ignore - Kept for future reference
+  private _parseEmailData(fullMessage: any, emailAccountId: string) {
     const headers = fullMessage.payload?.headers || [];
 
     const getHeader = (name: string) => {

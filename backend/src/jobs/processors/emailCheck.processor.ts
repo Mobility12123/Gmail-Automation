@@ -2,13 +2,94 @@ import { Job } from 'bull';
 import { prisma } from '../../index';
 import { io } from '../../index';
 import { gmailService } from '../../services/gmail.service';
-import { ruleMatchingService } from '../../services/ruleMatching.service';
 import { scheduleOrderProcessing } from '../../queues';
 import { logger } from '../../utils/logger';
-import { ActivityType } from '@prisma/client';
+import { ActivityType, Rule } from '@prisma/client';
 
 interface EmailCheckJob {
   emailAccountId: string;
+}
+
+interface EmailData {
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  labels: string[];
+  date: Date;
+}
+
+// Inline helper to match rules against email
+function matchesRule(emailData: EmailData, rule: Rule): boolean {
+  const conditions = rule.conditions as any;
+  
+  if (!conditions || (typeof conditions === 'object' && Object.keys(conditions).length === 0)) {
+    return false;
+  }
+
+  // Handle case where conditions might be a string
+  let parsedConditions = conditions;
+  if (typeof conditions === 'string') {
+    try {
+      parsedConditions = JSON.parse(conditions);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  const checks: boolean[] = [];
+
+  // Check subject
+  if (parsedConditions.matchSubject) {
+    checks.push(emailData.subject.toLowerCase().includes(parsedConditions.matchSubject.toLowerCase()));
+  }
+
+  // Check from
+  if (parsedConditions.matchFrom) {
+    checks.push(emailData.from.toLowerCase().includes(parsedConditions.matchFrom.toLowerCase()));
+  }
+
+  // Check body
+  if (parsedConditions.matchBody && emailData.body) {
+    checks.push(emailData.body.toLowerCase().includes(parsedConditions.matchBody.toLowerCase()));
+  }
+
+  // If no conditions checked, don't match
+  if (checks.length === 0) {
+    return false;
+  }
+
+  // All checks must pass (AND logic)
+  return checks.every(check => check === true);
+}
+
+// Find matching rules for an email
+function findMatchingRules(emailData: EmailData, rules: Rule[]): Rule[] {
+  return rules.filter(rule => matchesRule(emailData, rule));
+}
+
+// Extract accept link from email body
+function extractAcceptLink(emailData: EmailData): string | null {
+  const body = emailData.body || '';
+  
+  // Look for common accept/confirm link patterns
+  const patterns = [
+    /https?:\/\/[^\s<>"]*(?:accept|confirm|verify|approve)[^\s<>"]*/gi,
+    /https?:\/\/[^\s<>"]*click[^\s<>"]*(?:here|confirm)[^\s<>"]*/gi,
+    /href=["'](https?:\/\/[^"']*(?:accept|confirm)[^"']*)["']/gi,
+  ];
+
+  for (const pattern of patterns) {
+    const matches = body.match(pattern);
+    if (matches && matches.length > 0) {
+      // Clean up the match
+      let link = matches[0];
+      link = link.replace(/href=["']/gi, '').replace(/["']$/g, '');
+      return link;
+    }
+  }
+
+  return null;
 }
 
 export async function processEmailCheck(job: Job<EmailCheckJob>) {
@@ -99,7 +180,7 @@ export async function processEmailCheck(job: Job<EmailCheckJob>) {
       };
 
       // Find matching rules
-      const matchingRules = ruleMatchingService.findMatchingRules(
+      const matchingRules = findMatchingRules(
         emailData,
         account.rules
       );
@@ -108,7 +189,7 @@ export async function processEmailCheck(job: Job<EmailCheckJob>) {
         const rule = matchingRules[0]; // Use highest priority rule
 
         // Extract accept link
-        const acceptLink = ruleMatchingService.extractAcceptLink(emailData);
+        const acceptLink = extractAcceptLink(emailData);
 
         // Create processed email record
         const processedEmail = await prisma.processedEmail.create({
@@ -157,18 +238,9 @@ export async function processEmailCheck(job: Job<EmailCheckJob>) {
           },
         });
 
-        // If auto-accept is enabled and we have a link, schedule order processing
-        if (rule.autoAccept && acceptLink) {
+        // If action is ACCEPT and we have an accept link, schedule order processing
+        if (rule.action === 'ACCEPT' && acceptLink) {
           await scheduleOrderProcessing(emailAccountId, message.id);
-        }
-
-        // Mark as read if configured
-        if (rule.markAsRead) {
-          try {
-            await gmailService.markAsRead(accessToken, message.id);
-          } catch (error) {
-            logger.error('Error marking email as read:', error);
-          }
         }
 
         // Emit real-time event

@@ -17,7 +17,7 @@ class MockQueue {
     this.name = name;
   }
 
-  async add(jobName: string, data: any, options?: any) {
+  async add(jobName: string, data: any, _options?: any) {
     logger.info(`Mock queue: Would add job ${jobName} to ${this.name}`, { data });
     // For development without Redis, process immediately
     const handler = this.handlers.get(jobName);
@@ -33,12 +33,12 @@ class MockQueue {
     return { id: Date.now() };
   }
 
-  process(jobName: string, concurrency: number, handler: Function) {
+  process(jobName: string, _concurrency: number, handler: Function) {
     this.handlers.set(jobName, handler);
     logger.info(`Mock queue: Registered processor for ${jobName}`);
   }
 
-  on(event: string, handler: Function) {
+  on(_event: string, _handler: Function) {
     // Mock event handler
   }
 

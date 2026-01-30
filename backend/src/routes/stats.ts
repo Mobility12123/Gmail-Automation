@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { AuthRequest } from '../middleware/auth';
 import { ProcessingStatus } from '@prisma/client';
@@ -6,7 +6,7 @@ import { ProcessingStatus } from '@prisma/client';
 const router = Router();
 
 // Get dashboard statistics
-router.get('/dashboard', async (req: AuthRequest, res, next) => {
+router.get('/dashboard', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.userId!;
 
@@ -141,7 +141,7 @@ router.get('/dashboard', async (req: AuthRequest, res, next) => {
 });
 
 // Get email account statistics
-router.get('/email-accounts/:id', async (req: AuthRequest, res, next) => {
+router.get('/email-accounts/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
 

@@ -193,7 +193,7 @@ export class RuleEngine {
       const orderDetails = this.extractOrderDetails(emailData.subject, emailData.bodyPreview || '');
 
       // Build dynamic confirmation email
-      const subject = this.replaceTemplateVariables(
+      const confirmationSubject = this.replaceTemplateVariables(
         rule.confirmationSubject || 'Order Confirmation - #{{orderNumber}}',
         orderDetails,
         customerName,
@@ -207,12 +207,12 @@ export class RuleEngine {
         emailData
       );
 
-      // Send reply email
+      // Send reply email with custom subject
       await gmailService.sendReply(
         emailAccount.accessToken,
         emailData.threadId,
         customerEmail,
-        emailData.subject,
+        confirmationSubject,
         body
       );
 

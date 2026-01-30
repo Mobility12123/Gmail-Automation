@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { AuthRequest } from '../middleware/auth';
 import { ActivityType } from '@prisma/client';
@@ -6,7 +6,7 @@ import { ActivityType } from '@prisma/client';
 const router = Router();
 
 // Get activity logs
-router.get('/', async (req: AuthRequest, res, next) => {
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { emailAccountId, type, limit = '50', offset = '0' } = req.query;
 
@@ -54,7 +54,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 });
 
 // Get recent activity (last 24 hours)
-router.get('/recent', async (req: AuthRequest, res, next) => {
+router.get('/recent', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -93,7 +93,7 @@ router.get('/recent', async (req: AuthRequest, res, next) => {
 });
 
 // Get processed emails
-router.get('/emails', async (req: AuthRequest, res, next) => {
+router.get('/emails', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { emailAccountId, status, limit = '50', offset = '0' } = req.query;
 
@@ -145,7 +145,7 @@ router.get('/emails', async (req: AuthRequest, res, next) => {
 });
 
 // Get single processed email
-router.get('/emails/:id', async (req: AuthRequest, res, next) => {
+router.get('/emails/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const email = await prisma.processedEmail.findFirst({
       where: {

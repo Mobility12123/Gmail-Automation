@@ -1,15 +1,15 @@
-import { Router } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import { prisma } from '../index';
 import { gmailService } from '../services/gmail.service';
 import { AuthRequest } from '../middleware/auth';
-import { BadRequestError, NotFoundError, ConflictError } from '../middleware/errorHandler';
+import { BadRequestError, NotFoundError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { ActivityType } from '@prisma/client';
 
 const router = Router();
 
 // Get all email accounts
-router.get('/', async (req: AuthRequest, res, next) => {
+router.get('/', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const accounts = await prisma.emailAccount.findMany({
       where: { userId: req.userId! },
@@ -33,7 +33,7 @@ router.get('/', async (req: AuthRequest, res, next) => {
 });
 
 // Get single email account
-router.get('/:id', async (req: AuthRequest, res, next) => {
+router.get('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const account = await prisma.emailAccount.findFirst({
       where: {
@@ -62,7 +62,7 @@ router.get('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Connect email account
-router.post('/', async (req: AuthRequest, res, next) => {
+router.post('/', async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, accessToken, refreshToken, expiresIn } = req.body;
 
@@ -121,7 +121,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
         },
       });
 
-      return res.json({
+      res.json({
         account: {
           id: updatedAccount.id,
           email: updatedAccount.email,
@@ -131,6 +131,7 @@ router.post('/', async (req: AuthRequest, res, next) => {
           createdAt: updatedAccount.createdAt,
         },
       });
+      return;
     }
 
     // Calculate token expiry safely
@@ -258,7 +259,7 @@ The Store Team`,
 });
 
 // Update email account
-router.patch('/:id', async (req: AuthRequest, res, next) => {
+router.patch('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { isActive } = req.body;
 
@@ -295,7 +296,7 @@ router.patch('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Delete email account
-router.delete('/:id', async (req: AuthRequest, res, next) => {
+router.delete('/:id', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const account = await prisma.emailAccount.findFirst({
       where: {
@@ -331,7 +332,7 @@ router.delete('/:id', async (req: AuthRequest, res, next) => {
 });
 
 // Test email account connection
-router.post('/:id/test', async (req: AuthRequest, res, next) => {
+router.post('/:id/test', async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const account = await prisma.emailAccount.findFirst({
       where: {
