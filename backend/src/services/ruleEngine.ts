@@ -48,19 +48,37 @@ export class RuleEngine {
         }
       }
 
+      if (!matchedRule) {
+        logger.debug(`No matching rules for email from ${from} with subject "${subject}"`);
+      }
+
       // Execute rule action
       if (matchedRule) {
-        await this.executeRuleAction(matchedRule, emailData, emailAccount);
+        try {
+          await this.executeRuleAction(matchedRule, emailData, emailAccount);
+          logger.info(`Rule action executed successfully for rule: "${matchedRule.name}"`);
 
-        // Update rule statistics
-        await prisma.rule.update({
-          where: { id: matchedRule.id },
-          data: {
-            matchCount: { increment: 1 },
-            successCount: { increment: 1 },
-            lastMatched: new Date(),
-          },
-        });
+          // Update rule statistics
+          await prisma.rule.update({
+            where: { id: matchedRule.id },
+            data: {
+              matchCount: { increment: 1 },
+              successCount: { increment: 1 },
+              lastMatched: new Date(),
+            },
+          });
+        } catch (error) {
+          logger.error(`Error executing rule action for "${matchedRule.name}":`, error);
+          // Update failure count
+          await prisma.rule.update({
+            where: { id: matchedRule.id },
+            data: {
+              matchCount: { increment: 1 },
+              failureCount: { increment: 1 },
+              lastMatched: new Date(),
+            },
+          });
+        }
       }
 
       // Save processed email (upsert to handle race conditions)
