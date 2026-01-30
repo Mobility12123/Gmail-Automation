@@ -298,6 +298,10 @@ export class GmailService {
         },
       });
 
+      if (!response.data.id) {
+        throw new Error('No message ID returned from Gmail API');
+      }
+
       logger.info(`Confirmation email sent to ${toEmail}`, {
         messageId: response.data.id,
         threadId,
@@ -305,7 +309,12 @@ export class GmailService {
 
       return response.data;
     } catch (error) {
-      logger.error('Error sending reply email:', error);
+      logger.error('Error sending reply email:', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : null,
+        toEmail,
+        threadId,
+      });
       throw new Error('Failed to send reply email');
     }
   }
